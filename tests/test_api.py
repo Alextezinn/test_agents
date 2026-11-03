@@ -220,3 +220,23 @@ def test_unknown_route_uses_unified_error_format(client):
     body = res.json()
     assert set(body.keys()) == {"error"}
     assert "code" in body["error"] and "message" in body["error"]
+
+
+def test_unhandled_error_uses_unified_error_format(tmp_path, monkeypatch):
+    monkeypatch.setenv("RESTAURANT_DB", str(tmp_path / "test.db"))
+
+    def boom():
+        raise RuntimeError("boom")
+
+    app.add_api_route("/api/v1/_boom", boom, methods=["GET"])
+    try:
+        with TestClient(app, raise_server_exceptions=False) as test_client:
+            res = test_client.get("/api/v1/_boom")
+    finally:
+        app.router.routes = [
+            route for route in app.router.routes if getattr(route, "path", None) != "/api/v1/_boom"
+        ]
+    assert res.status_code == 500
+    assert res.json() == {
+        "error": {"code": "internal_error", "message": "internal server error"}
+    }

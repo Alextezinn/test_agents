@@ -44,3 +44,10 @@ def register_error_handlers(app: FastAPI) -> None:
             status_code=exc.status_code,
             content=_body(codes.get(exc.status_code, "http_error"), str(exc.detail)),
         )
+
+    @app.exception_handler(Exception)
+    async def handle_unexpected_error(request: Request, exc: Exception):
+        return JSONResponse(
+            status_code=500,
+            content=_body("internal_error", "internal server error"),
+        )
