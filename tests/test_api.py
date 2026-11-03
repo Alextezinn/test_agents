@@ -60,6 +60,72 @@ def test_menu_unknown_category_returns_empty(client):
     assert res.json()["items"] == []
 
 
+# --- menu item creation (staff only) ---
+
+def create_menu_item(client, body=None):
+    if body is None:
+        body = {"name": "Рамен", "category": "main", "price": 550.0}
+    res = client.post(
+        "/api/v1/menu",
+        json=body,
+        headers={"Authorization": "Bearer {}".format(STAFF_TOKEN)},
+    )
+    assert res.status_code == 201
+    return res.json()
+
+
+def test_create_menu_item(client):
+    data = create_menu_item(client)
+    assert data["id"] > 0
+    assert data["description"] == ""
+    assert data["available"] is True
+    listed = client.get("/api/v1/menu").json()["items"]
+    assert any(item["id"] == data["id"] for item in listed)
+
+
+def test_create_menu_item_unavailable(client):
+    data = create_menu_item(client, {"name": "Утиная ножка", "category": "main", "price": 800.0, "available": False})
+    assert data["available"] is False
+    listed = client.get("/api/v1/menu", params={"available": "false"}).json()["items"]
+    assert any(item["id"] == data["id"] for item in listed)
+
+
+def test_create_menu_item_requires_token(client):
+    res = client.post("/api/v1/menu", json={"name": "Рамен", "category": "main", "price": 550.0})
+    assert res.status_code == 401
+    assert res.json()["error"]["code"] == "unauthorized"
+
+
+def test_create_menu_item_rejects_wrong_token(client):
+    res = client.post(
+        "/api/v1/menu",
+        json={"name": "Рамен", "category": "main", "price": 550.0},
+        headers={"Authorization": "Bearer wrong-token"},
+    )
+    assert res.status_code == 403
+    assert res.json()["error"]["code"] == "forbidden"
+
+
+def test_create_menu_item_invalid_price(client):
+    res = client.post(
+        "/api/v1/menu",
+        json={"name": "Рамен", "category": "main", "price": -5},
+        headers={"Authorization": "Bearer {}".format(STAFF_TOKEN)},
+    )
+    assert res.status_code == 422
+    assert res.json()["error"]["code"] == "validation_error"
+
+
+def test_create_menu_item_empty_name(client):
+    res = client.post(
+        "/api/v1/menu",
+        json={"name": "", "category": "main", "price": 550.0},
+        headers={"Authorization": "Bearer {}".format(STAFF_TOKEN)},
+    )
+    assert res.status_code == 422
+    assert res.json()["error"]["code"] == "validation_error"
+
+
 # --- tables ---
 
 def test_tables(client):
