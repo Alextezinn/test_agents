@@ -1,16 +1,24 @@
-# This is a sample Python script.
+"""Restaurant API — FastAPI application entry point.
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+Run:  python3 -m uvicorn main:app --reload
+"""
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+
+from app.db import init_db
+from app.errors import register_error_handlers
+from app.routers import menu, orders, reservations, tables
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+app = FastAPI(title="Restaurant API", version="0.1.0", lifespan=lifespan)
+register_error_handlers(app)
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+for router in (menu.router, tables.router, reservations.router, orders.router):
+    app.include_router(router, prefix="/api/v1")
