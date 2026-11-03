@@ -84,7 +84,10 @@ def test_create_menu_item(client):
 
 
 def test_create_menu_item_unavailable(client):
-    data = create_menu_item(client, {"name": "Утиная ножка", "category": "main", "price": 800.0, "available": False})
+    data = create_menu_item(
+        client,
+        {"name": "Утиная ножка", "category": "main", "price": 800.0, "available": False},
+    )
     assert data["available"] is False
     listed = client.get("/api/v1/menu", params={"available": "false"}).json()["items"]
     assert any(item["id"] == data["id"] for item in listed)
